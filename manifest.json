@@ -1,0 +1,11 @@
+{
+    "manifest_version": 3,
+    "name": "Zillow Overlay Test",
+    "version": "0.1",
+    "content_scripts": [
+      {
+        "matches": ["*://*.zillow.com/*"],
+        "js": ["content.js"]
+      }
+    ]
+  }
