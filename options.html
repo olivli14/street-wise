@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zillow Overlay Settings</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+          sans-serif;
+      }
+      body {
+        margin: 24px;
+        color: #111827;
+      }
+      .card {
+        max-width: 520px;
+        padding: 16px;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+      }
+      label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      input {
+        width: 100%;
+        padding: 10px 12px;
+        font-size: 14px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        margin-bottom: 12px;
+      }
+      button {
+        padding: 10px 14px;
+        font-size: 14px;
+        border-radius: 8px;
+        border: 1px solid #d1d5db;
+        background: #111827;
+        color: #fff;
+        cursor: pointer;
+      }
+      #status {
+        margin-top: 12px;
+        font-size: 13px;
+        color: #065f46;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h2>Geoapify API Key</h2>
+      <label for="apiKey">API Key</label>
+      <input id="apiKey" type="text" placeholder="Paste your Geoapify key" />
+      <button id="save">Save</button>
+      <div id="status"></div>
+    </div>
+
+    <script src="options.js"></script>
+  </body>
+</html>
