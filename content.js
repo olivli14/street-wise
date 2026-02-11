@@ -18,6 +18,71 @@ box.style.fontFamily =
 box.style.whiteSpace = "pre-line";
 box.style.maxWidth = "280px";
 
+const header = document.createElement("div");
+header.textContent = "Streetwise";
+header.style.fontWeight = "600";
+
+const addressLine = document.createElement("div");
+addressLine.style.marginTop = "6px";
+
+const coordsLine = document.createElement("div");
+coordsLine.style.marginTop = "6px";
+
+const statusLine = document.createElement("div");
+statusLine.style.marginTop = "6px";
+statusLine.style.color = "#6b7280";
+statusLine.style.fontSize = "12px";
+
+const chatContainer = document.createElement("div");
+chatContainer.style.marginTop = "10px";
+chatContainer.style.paddingTop = "8px";
+chatContainer.style.borderTop = "1px solid #e5e7eb";
+
+const chatLog = document.createElement("div");
+chatLog.style.maxHeight = "160px";
+chatLog.style.overflowY = "auto";
+chatLog.style.background = "#f9fafb";
+chatLog.style.border = "1px solid #e5e7eb";
+chatLog.style.borderRadius = "8px";
+chatLog.style.padding = "8px";
+chatLog.style.fontSize = "12px";
+
+const chatForm = document.createElement("form");
+chatForm.style.display = "flex";
+chatForm.style.gap = "6px";
+chatForm.style.marginTop = "8px";
+
+const chatInput = document.createElement("input");
+chatInput.type = "text";
+chatInput.placeholder = "Ask about this home...";
+chatInput.style.flex = "1";
+chatInput.style.fontSize = "12px";
+chatInput.style.padding = "6px 8px";
+chatInput.style.border = "1px solid #d1d5db";
+chatInput.style.borderRadius = "6px";
+
+const chatButton = document.createElement("button");
+chatButton.type = "submit";
+chatButton.textContent = "Send";
+chatButton.style.fontSize = "12px";
+chatButton.style.padding = "6px 10px";
+chatButton.style.border = "1px solid #d1d5db";
+chatButton.style.borderRadius = "6px";
+chatButton.style.background = "#111827";
+chatButton.style.color = "#fff";
+chatButton.style.cursor = "pointer";
+
+chatForm.appendChild(chatInput);
+chatForm.appendChild(chatButton);
+chatContainer.appendChild(chatLog);
+chatContainer.appendChild(chatForm);
+
+box.appendChild(header);
+box.appendChild(addressLine);
+box.appendChild(coordsLine);
+box.appendChild(statusLine);
+box.appendChild(chatContainer);
+
 let backendUrl = null;
 
 function loadBackendUrl() {
@@ -62,6 +127,79 @@ function getAddressFromTitle() {
 let lastAddress = null;
 let inFlight = false;
 const geocodeCache = new Map();
+let lastCoords = null;
+let chatInFlight = false;
+const chatMessages = [];
+
+function setStatus(message) {
+  statusLine.textContent = message || "";
+}
+
+function renderChat() {
+  chatLog.innerHTML = "";
+  if (chatMessages.length === 0) {
+    const empty = document.createElement("div");
+    empty.textContent = "Ask a question about this listing.";
+    empty.style.color = "#6b7280";
+    chatLog.appendChild(empty);
+    return;
+  }
+  chatMessages.forEach((message) => {
+    const row = document.createElement("div");
+    row.style.marginBottom = "6px";
+    row.textContent = `${message.role}: ${message.content}`;
+    chatLog.appendChild(row);
+  });
+}
+
+async function sendQuestion(question) {
+  if (!question) return;
+  if (!backendUrl) {
+    await loadBackendUrl();
+  }
+  if (!backendUrl) {
+    setStatus("Set your backend URL.");
+    return;
+  }
+  if (chatInFlight) return;
+  chatInFlight = true;
+  setStatus("Asking assistant...");
+  chatMessages.push({ role: "user", content: question });
+  renderChat();
+  try {
+    const response = await fetch(`${backendUrl}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        question,
+        listing: {
+          address: lastAddress,
+          lat: lastCoords?.lat ?? null,
+          lon: lastCoords?.lon ?? null,
+        },
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`Chat error: ${response.status}`);
+    }
+    const data = await response.json();
+    chatMessages.push({
+      role: "assistant",
+      content: data?.answer || "No response.",
+    });
+    renderChat();
+    setStatus("");
+  } catch (error) {
+    chatMessages.push({
+      role: "assistant",
+      content: "Failed to get a response.",
+    });
+    renderChat();
+    setStatus("");
+  } finally {
+    chatInFlight = false;
+  }
+}
 
 async function geocodeAddress(address) {
   if (geocodeCache.has(address)) return geocodeCache.get(address);
@@ -95,17 +233,21 @@ async function updateBoxIfChanged() {
   const address = getAddress() || getAddressFromUrl() || getAddressFromTitle();
   if (!address || address === lastAddress) return;
   lastAddress = address;
+  addressLine.textContent = `Address: ${address}`;
+  coordsLine.textContent = "Lat: -  Lng: -";
   if (inFlight) return;
   inFlight = true;
-  box.innerText = `Looking up coordinates:\n${address}`;
+  setStatus("Looking up coordinates...");
   try {
     const { lat, lon } = await geocodeAddress(address);
-    box.innerText = `Address:\n${address}\n\nLat: ${lat}\nLng: ${lon}`;
+    lastCoords = { lat, lon };
+    coordsLine.textContent = `Lat: ${lat}  Lng: ${lon}`;
+    setStatus("");
   } catch (error) {
     if (error.message === "Missing backend URL") {
-      box.innerText = `Address:\n${address}\n\nSet your backend URL.`;
+      setStatus("Set your backend URL.");
     } else {
-      box.innerText = `Address:\n${address}\n\nFailed to fetch coordinates.`;
+      setStatus("Failed to fetch coordinates.");
     }
   } finally {
     inFlight = false;
@@ -125,6 +267,15 @@ if (document.body) {
 
 // initial update
 setTimeout(updateBoxIfChanged, 300);
+renderChat();
+
+chatForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const question = chatInput.value.trim();
+  if (!question) return;
+  chatInput.value = "";
+  sendQuestion(question);
+});
 
 // update every 5 seconds
 setInterval(updateBoxIfChanged, 5000);
