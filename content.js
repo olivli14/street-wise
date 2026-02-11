@@ -18,14 +18,13 @@ box.style.fontFamily =
 box.style.whiteSpace = "pre-line";
 box.style.maxWidth = "280px";
 
-const GEOAPIFY_BASE_URL = "https://api.geoapify.com/v1/geocode/search";
-let geoapifyApiKey = null;
+let backendUrl = null;
 
-function loadApiKey() {
+function loadBackendUrl() {
   return new Promise((resolve) => {
-    chrome.storage.sync.get(["geoapifyApiKey"], (result) => {
-      geoapifyApiKey = result.geoapifyApiKey || null;
-      resolve(geoapifyApiKey);
+    chrome.storage.sync.get(["backendUrl"], (result) => {
+      backendUrl = result.backendUrl || null;
+      resolve(backendUrl);
     });
   });
 }
@@ -67,28 +66,27 @@ const geocodeCache = new Map();
 async function geocodeAddress(address) {
   if (geocodeCache.has(address)) return geocodeCache.get(address);
 
-  if (!geoapifyApiKey) {
-    await loadApiKey();
+  if (!backendUrl) {
+    await loadBackendUrl();
   }
-  if (!geoapifyApiKey) {
-    throw new Error("Missing Geoapify API key");
+  if (!backendUrl) {
+    throw new Error("Missing backend URL");
   }
 
-  const url = `${GEOAPIFY_BASE_URL}?text=${encodeURIComponent(
-    address
-  )}&format=json&apiKey=${geoapifyApiKey}`;
-
-  const response = await fetch(url);
+  const response = await fetch(`${backendUrl}/api/geocode`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ address }),
+  });
   if (!response.ok) {
-    throw new Error(`Geoapify error: ${response.status}`);
+    throw new Error(`Geocode error: ${response.status}`);
   }
   const data = await response.json();
-  const first = data?.results?.[0];
-  if (!first || first.lat == null || first.lon == null) {
+  if (!data || data.lat == null || data.lon == null) {
     throw new Error("No coordinates found");
   }
 
-  const result = { lat: first.lat, lon: first.lon };
+  const result = { lat: data.lat, lon: data.lon };
   geocodeCache.set(address, result);
   return result;
 }
@@ -104,8 +102,8 @@ async function updateBoxIfChanged() {
     const { lat, lon } = await geocodeAddress(address);
     box.innerText = `Address:\n${address}\n\nLat: ${lat}\nLng: ${lon}`;
   } catch (error) {
-    if (error.message === "Missing Geoapify API key") {
-      box.innerText = `Address:\n${address}\n\nAdd your Geoapify API key.`;
+    if (error.message === "Missing backend URL") {
+      box.innerText = `Address:\n${address}\n\nSet your backend URL.`;
     } else {
       box.innerText = `Address:\n${address}\n\nFailed to fetch coordinates.`;
     }
