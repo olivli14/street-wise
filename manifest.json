@@ -2,6 +2,8 @@
     "manifest_version": 3,
     "name": "Zillow Overlay Test",
     "version": "0.1",
+    "permissions": ["storage"],
+    "options_page": "options.html",
     "content_scripts": [
       {
         "matches": ["*://*.zillow.com/*"],
