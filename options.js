@@ -1,4 +1,4 @@
-const input = document.getElementById("apiKey");
+const input = document.getElementById("backendUrl");
 const status = document.getElementById("status");
 const saveButton = document.getElementById("save");
 
@@ -11,16 +11,16 @@ function setStatus(message) {
 }
 
 function loadKey() {
-  chrome.storage.sync.get(["geoapifyApiKey"], (result) => {
-    if (result.geoapifyApiKey) {
-      input.value = result.geoapifyApiKey;
+  chrome.storage.sync.get(["backendUrl"], (result) => {
+    if (result.backendUrl) {
+      input.value = result.backendUrl;
     }
   });
 }
 
 function saveKey() {
   const value = input.value.trim();
-  chrome.storage.sync.set({ geoapifyApiKey: value }, () => {
+  chrome.storage.sync.set({ backendUrl: value }, () => {
     setStatus("Saved.");
   });
 }
